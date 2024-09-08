@@ -1,0 +1,69 @@
+package grain128
+
+import (
+	"bytes"
+	"testing"
+)
+
+func TestGrain128Initialization(t *testing.T) {
+	key := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}
+	iv := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0A, 0x0B}
+
+	cipher, err := NewGrain128(key)
+	if err != nil {
+		t.Fatalf("Failed to initialize Grain128 cipher: %v", err)
+	}
+
+	cipher.IVSetup(iv)
+}
+
+func TestGrain128Keystream(t *testing.T) {
+	key := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}
+	iv := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0A, 0x0B}
+
+	cipher, err := NewGrain128(key)
+	if err != nil {
+		t.Fatalf("Failed to initialize Grain128 cipher: %v", err)
+	}
+	cipher.IVSetup(iv)
+
+	keystream := make([]byte, 16)
+	cipher.KeystreamBytes(keystream)
+
+	expectedKeystream := []byte{0x8a, 0x39, 0xb9, 0xae, 0x1a, 0x47, 0xa6, 0xea, 0x1c, 0xac, 0x48, 0xd9, 0x71, 0x62, 0x9b, 0x5d}
+
+	if !bytes.Equal(keystream, expectedKeystream) {
+		t.Errorf("Keystream mismatch, got %x, expected %x", keystream, expectedKeystream)
+	}
+}
+
+func TestGrain128EncryptDecrypt(t *testing.T) {
+	key := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}
+	iv := []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0A, 0x0B}
+
+	plaintext := []byte("SECRET MESSAGE!!")
+	ciphertext := make([]byte, len(plaintext))
+	decrypted := make([]byte, len(plaintext))
+
+	cipher, err := NewGrain128(key)
+	if err != nil {
+		t.Fatalf("Failed to initialize Grain128 cipher: %v", err)
+	}
+	cipher.IVSetup(iv)
+
+	cipher.XORKeyStream(ciphertext, plaintext)
+
+	// Reset the cipher and decrypt
+	cipher.IVSetup(iv)
+	cipher.XORKeyStream(decrypted, ciphertext)
+
+	if !bytes.Equal(plaintext, decrypted) {
+		t.Errorf("Decryption failed, got %x, expected %x", decrypted, plaintext)
+	}
+}
